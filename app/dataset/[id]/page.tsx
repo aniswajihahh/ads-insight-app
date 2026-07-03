@@ -5,6 +5,7 @@ import QASection from "./QASection";
 import DeleteButton from "./DeleteButton";
 import EditDataset from "./EditDataset";
 import RegenerateButton from "./RegenerateButton";
+import MetricsPanel from "./MetricsPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -173,33 +174,7 @@ export default async function DatasetPage({ params }: { params: Promise<{ id: st
         )}
 
         {/* Metric highlights */}
-        <div className="bg-white border border-gray-200 rounded-xl p-6">
-          <h2 className="text-lg font-semibold mb-4">Metric Highlights</h2>
-          {metricList.length === 0 ? (
-            <p className="text-sm text-gray-400">No numeric columns detected.</p>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              {metricList.map((m) => (
-                <div key={m.id} className="bg-gray-50 rounded-lg p-4 text-center">
-                  <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">{m.metric_type}</div>
-                  <div className="text-lg font-bold text-gray-900">
-                    {m.metric_value >= 1000
-                      ? m.metric_value.toLocaleString("en-US", { maximumFractionDigits: 0 })
-                      : m.metric_value.toLocaleString("en-US", { maximumFractionDigits: 3 })}
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">{m.column_name}</div>
-                </div>
-              ))}
-            </div>
-          )}
-          {metricList.length > 0 && (
-            <div className="mt-4 space-y-1">
-              {metricList.map((m) => (
-                <p key={`${m.id}-label`} className="text-sm text-gray-600">• {m.metric_label}</p>
-              ))}
-            </div>
-          )}
-        </div>
+        <MetricsPanel metrics={metricList} datasetId={id} />
 
         {/* Q&A */}
         <QASection datasetId={id} initialQuestions={questionList} />

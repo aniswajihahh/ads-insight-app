@@ -66,10 +66,7 @@ function buildMetrics(
       metrics.push({ dataset_id: datasetId, column_name: stat.name, metric_type: "sum", metric_value: stat.sum, metric_label: `Total ${stat.name}: ${fmt(stat.sum)}` });
   }
 
-  // Sort by magnitude and take top 5
-  return metrics
-    .sort((a, b) => Math.abs(b.metric_value) - Math.abs(a.metric_value))
-    .slice(0, 5);
+  return metrics;
 }
 
 export async function POST(req: NextRequest) {
