@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       generationConfig: { temperature: 0.3, maxOutputTokens: 300 },
     });
 
@@ -58,7 +58,7 @@ Answer directly and specifically. Use numbers from the dataset where relevant. K
         dataset_id,
         question_text: question_text.trim(),
         answer_text: answer,
-        answer_source: "google/gemini-1.5-flash",
+        answer_source: "google/gemini-2.5-flash",
         answer_confidence: 0.8,
       })
       .select()
@@ -72,7 +72,7 @@ Answer directly and specifically. Use numbers from the dataset where relevant. K
       action: "ask_question",
       object_type: "question",
       object_id: question.id,
-      metadata: { dataset_id, model: "gemini-1.5-flash" },
+      metadata: { dataset_id, model: "gemini-2.5-flash" },
     });
 
     return NextResponse.json({ id: question.id, answer });
