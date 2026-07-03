@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface Question {
   id: string;
@@ -15,6 +16,7 @@ interface QASectionProps {
 }
 
 export default function QASection({ datasetId, initialQuestions }: QASectionProps) {
+  const router = useRouter();
   const [questions, setQuestions] = useState<Question[]>(initialQuestions);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -34,6 +36,12 @@ export default function QASection({ datasetId, initialQuestions }: QASectionProp
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ dataset_id: datasetId, question_text: text }),
       });
+
+      if (res.status === 401) {
+        const next = encodeURIComponent(window.location.pathname);
+        router.push(`/login?next=${next}`);
+        return;
+      }
 
       const data = await res.json();
 

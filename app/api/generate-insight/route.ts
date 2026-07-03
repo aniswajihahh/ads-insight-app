@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 interface ColumnStats {
   name: string;
@@ -51,17 +51,18 @@ Return ONLY valid JSON, no markdown, no explanation.`;
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { dataset_id, dataset_name, row_count, column_stats, sample_rows } = body;
+    const { dataset_id, dataset_name, row_count, column_stats, sample_rows, user_id } = body;
 
     if (!dataset_id) {
       return NextResponse.json({ error: "dataset_id required" }, { status: 400 });
     }
 
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
     if (!process.env.GEMINI_API_KEY) {
       await supabase.from("insights").insert({
         dataset_id,
+        user_id: user_id ?? null,
         summary: "Analysis pending — Gemini API key not configured.",
         key_trends: [],
         anomalies: [],
@@ -103,6 +104,7 @@ export async function POST(req: NextRequest) {
 
     const { error: insightErr } = await supabase.from("insights").insert({
       dataset_id,
+      user_id: user_id ?? null,
       summary: parsed.summary ?? "No summary generated.",
       summary_source: "google/gemini-2.5-flash",
       summary_confidence: 0.85,
@@ -123,6 +125,7 @@ export async function POST(req: NextRequest) {
       action: "generate_insight",
       object_type: "insight",
       object_id: dataset_id,
+      user_id: user_id ?? null,
       metadata: { model: "gemini-2.5-flash", dataset_name },
     });
 

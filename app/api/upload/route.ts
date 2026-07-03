@@ -67,6 +67,12 @@ function buildMetrics(
 
 export async function POST(req: NextRequest) {
   try {
+    const supabaseAuth = await createClient();
+    const { data: { user } } = await supabaseAuth.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -111,7 +117,7 @@ export async function POST(req: NextRequest) {
     const sampleRows = allRows.slice(0, 10);
     const stats = computeColumnStats(allRows, columns);
 
-    const supabase = await createClient();
+    const supabase = supabaseAuth;
 
     const { data: dataset, error: dsErr } = await supabase
       .from("datasets")
@@ -121,6 +127,7 @@ export async function POST(req: NextRequest) {
         row_count: rowCount,
         file_type: isCSV ? "csv" : "excel",
         is_demo: false,
+        user_id: user.id,
       })
       .select()
       .single();
@@ -140,6 +147,7 @@ export async function POST(req: NextRequest) {
       action: "upload",
       object_type: "dataset",
       object_id: dataset.id,
+      user_id: user.id,
       metadata: { row_count: rowCount, column_count: columns.length, file_type: isCSV ? "csv" : "excel" },
     });
 
@@ -154,6 +162,7 @@ export async function POST(req: NextRequest) {
         row_count: rowCount,
         column_stats: stats,
         sample_rows: sampleRows,
+        user_id: user.id,
       }),
     }).catch(() => {
       // Fire-and-forget; insight will show "Analysis pending" if this fails

@@ -11,6 +11,10 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
 
     const [{ data: dataset }, { data: insight }] = await Promise.all([
       supabase.from("datasets").select("name, column_names, row_count").eq("id", dataset_id).single(),
@@ -69,6 +73,7 @@ Answer directly and specifically. Use numbers from the dataset where relevant. K
       .from("questions")
       .insert({
         dataset_id,
+        user_id: user.id,
         question_text: question_text.trim(),
         answer_text: answer,
         answer_source: "google/gemini-2.5-flash",
@@ -85,6 +90,7 @@ Answer directly and specifically. Use numbers from the dataset where relevant. K
       action: "ask_question",
       object_type: "question",
       object_id: question.id,
+      user_id: user.id,
       metadata: { dataset_id, model: "gemini-2.5-flash" },
     });
 
