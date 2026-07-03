@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash",
+      model: "gemini-1.5-flash",
       generationConfig: { responseMimeType: "application/json", temperature: 0.3 },
     });
 
@@ -91,13 +91,13 @@ export async function POST(req: NextRequest) {
     const { error: insightErr } = await supabase.from("insights").insert({
       dataset_id,
       summary: parsed.summary ?? "No summary generated.",
-      summary_source: "google/gemini-2.0-flash",
+      summary_source: "google/gemini-1.5-flash",
       summary_confidence: 0.85,
       key_trends: parsed.key_trends ?? [],
-      key_trends_source: "google/gemini-2.0-flash",
+      key_trends_source: "google/gemini-1.5-flash",
       key_trends_confidence: 0.82,
       anomalies: parsed.anomalies ?? [],
-      anomalies_source: "google/gemini-2.0-flash",
+      anomalies_source: "google/gemini-1.5-flash",
       anomalies_confidence: 0.78,
       version: 1,
     });
@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
       action: "generate_insight",
       object_type: "insight",
       object_id: dataset_id,
-      metadata: { model: "gemini-2.0-flash", dataset_name },
+      metadata: { model: "gemini-1.5-flash", dataset_name },
     });
 
     return NextResponse.json({ ok: true });
