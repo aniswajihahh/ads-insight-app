@@ -1,12 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import LogoutButton from "@/app/components/LogoutButton";
 
 export const dynamic = "force-dynamic";
 
 export default async function DatasetsPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
 
   const { data: datasets } = await supabase
     .from("datasets")
@@ -22,16 +20,6 @@ export default async function DatasetsPage() {
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <Link href="/" className="text-xl font-bold text-indigo-600">Ads Insight</Link>
           <div className="flex items-center gap-4">
-            {user ? (
-              <>
-                <span className="text-xs text-gray-400 hidden sm:block">{user.email}</span>
-                <LogoutButton />
-              </>
-            ) : (
-              <Link href="/login" className="text-sm text-gray-600 hover:text-gray-900">
-                Login
-              </Link>
-            )}
             <Link
               href="/upload"
               className="bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"

@@ -1,12 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import LogoutButton from "@/app/components/LogoutButton";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
 
   const { data: datasets } = await supabase
     .from("datasets")
@@ -28,30 +26,12 @@ export default async function HomePage() {
             <Link href="/datasets" className="text-sm text-gray-600 hover:text-gray-900">
               All Datasets {uploadedCount ? `(${uploadedCount} uploaded)` : ""}
             </Link>
-            {user ? (
-              <>
-                <Link
-                  href="/upload"
-                  className="bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
-                >
-                  Upload CSV
-                </Link>
-                <span className="text-xs text-gray-400 hidden sm:block">{user.email}</span>
-                <LogoutButton />
-              </>
-            ) : (
-              <>
-                <Link href="/login" className="text-sm text-gray-600 hover:text-gray-900">
-                  Login
-                </Link>
-                <Link
-                  href="/upload"
-                  className="bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
-                >
-                  Upload CSV
-                </Link>
-              </>
-            )}
+            <Link
+              href="/upload"
+              className="bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              Upload CSV
+            </Link>
           </div>
         </div>
       </nav>

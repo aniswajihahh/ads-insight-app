@@ -4,9 +4,8 @@ import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import LogoutButton from "@/app/components/LogoutButton";
 
-export default function UploadClient({ userEmail }: { userEmail: string }) {
+export default function UploadClient() {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [name, setName] = useState("");
@@ -73,8 +72,6 @@ export default function UploadClient({ userEmail }: { userEmail: string }) {
           <Link href="/" className="text-xl font-bold text-indigo-600">Ads Insight</Link>
           <div className="flex items-center gap-4">
             <Link href="/datasets" className="text-sm text-gray-600 hover:text-gray-900">All Datasets</Link>
-            {userEmail && <span className="text-xs text-gray-400 hidden sm:block">{userEmail}</span>}
-            <LogoutButton />
           </div>
         </div>
       </nav>

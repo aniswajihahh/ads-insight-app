@@ -5,7 +5,6 @@ import QASection from "./QASection";
 import DeleteButton from "./DeleteButton";
 import EditDataset from "./EditDataset";
 import RegenerateButton from "./RegenerateButton";
-import LogoutButton from "@/app/components/LogoutButton";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +36,6 @@ interface Question {
 export default async function DatasetPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
 
   const { data: dataset, error } = await supabase
     .from("datasets")
@@ -74,21 +72,9 @@ export default async function DatasetPage({ params }: { params: Promise<{ id: st
           <Link href="/" className="text-xl font-bold text-indigo-600">Ads Insight</Link>
           <div className="flex items-center gap-4">
             <Link href="/datasets" className="text-sm text-gray-600 hover:text-gray-900">← All Datasets</Link>
-            {user ? (
-              <>
-                <Link href="/upload" className="bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors">
-                  Upload CSV
-                </Link>
-                <LogoutButton />
-              </>
-            ) : (
-              <>
-                <Link href="/login" className="text-sm text-gray-600 hover:text-gray-900">Login</Link>
-                <Link href="/upload" className="bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors">
-                  Upload CSV
-                </Link>
-              </>
-            )}
+            <Link href="/upload" className="bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors">
+              Upload CSV
+            </Link>
           </div>
         </div>
       </nav>

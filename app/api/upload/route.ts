@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 interface ColumnStats {
@@ -68,12 +67,6 @@ function buildMetrics(
 
 export async function POST(req: NextRequest) {
   try {
-    const supabaseAuth = await createClient();
-    const { data: { user } } = await supabaseAuth.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    }
-
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -118,7 +111,6 @@ export async function POST(req: NextRequest) {
     const sampleRows = allRows.slice(0, 10);
     const stats = computeColumnStats(allRows, columns);
 
-    // Use admin client for all DB writes — auth is verified above via getUser()
     const supabase = createAdminClient();
 
     const { data: dataset, error: dsErr } = await supabase
@@ -129,7 +121,6 @@ export async function POST(req: NextRequest) {
         row_count: rowCount,
         file_type: isCSV ? "csv" : "excel",
         is_demo: false,
-        user_id: user.id,
       })
       .select()
       .single();
@@ -139,7 +130,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Compute and store rule-based metrics
-    const metricRows = buildMetrics(dataset.id, stats).map((r) => ({ ...r, user_id: user.id }));
+    const metricRows = buildMetrics(dataset.id, stats);
     if (metricRows.length > 0) {
       await supabase.from("metrics").insert(metricRows);
     }
@@ -149,7 +140,6 @@ export async function POST(req: NextRequest) {
       action: "upload",
       object_type: "dataset",
       object_id: dataset.id,
-      user_id: user.id,
       metadata: { row_count: rowCount, column_count: columns.length, file_type: isCSV ? "csv" : "excel" },
     });
 
@@ -164,7 +154,6 @@ export async function POST(req: NextRequest) {
         row_count: rowCount,
         column_stats: stats,
         sample_rows: sampleRows,
-        user_id: user.id,
       }),
     }).catch(() => {
       // Fire-and-forget; insight will show "Analysis pending" if this fails
