@@ -51,6 +51,10 @@ export default function UploadClient() {
       const data = await res.json();
 
       if (!res.ok) {
+        if (res.status === 401) {
+          router.push("/login?next=/upload");
+          return;
+        }
         setErrorMsg(data.error ?? "Upload failed");
         setStatus("error");
         return;

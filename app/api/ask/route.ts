@@ -13,6 +13,10 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
 
     const [{ data: dataset }, { data: insight }] = await Promise.all([
       supabase.from("datasets").select("name, column_names, row_count").eq("id", dataset_id).single(),

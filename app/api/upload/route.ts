@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
+import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 interface ColumnStats {
@@ -17,6 +18,12 @@ interface ColumnStats {
 function computeColumnStats(rows: Record<string, unknown>[], columns: string[]): ColumnStats[] {
   return columns.map((col) => {
     const values = rows.map((r) => r[col]).filter((v) => v !== null && v !== undefined && v !== "");
+
+    // Treat columns whose name contains the word "ID" as identifiers, not metrics
+    if (/\bid\b/i.test(col)) {
+      return { name: col, type: "string", sample: values.slice(0, 5) };
+    }
+
     const numericValues = values
       .map((v) => parseFloat(String(v)))
       .filter((v) => !isNaN(v));
@@ -67,6 +74,11 @@ function buildMetrics(
 
 export async function POST(req: NextRequest) {
   try {
+    const { data: { user } } = await (await createClient()).auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
