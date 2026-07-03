@@ -49,8 +49,21 @@ User question: "${question_text}"
 
 Answer directly and specifically. Use numbers from the dataset where relevant. Keep it under 150 words.`;
 
-    const result = await model.generateContent(prompt);
-    const answer = result.response.text() ?? "Unable to generate an answer.";
+    let answer = "Unable to generate an answer.";
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const result = await model.generateContent(prompt);
+        answer = result.response.text() ?? "Unable to generate an answer.";
+        break;
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (attempt < 2 && msg.includes("503")) {
+          await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+          continue;
+        }
+        throw e;
+      }
+    }
 
     const { data: question, error: qErr } = await supabase
       .from("questions")

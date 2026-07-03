@@ -78,8 +78,21 @@ export async function POST(req: NextRequest) {
     });
 
     const prompt = buildPrompt(dataset_name, row_count, column_stats, sample_rows);
-    const result = await model.generateContent(prompt);
-    const raw = result.response.text();
+    let raw = "";
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const result = await model.generateContent(prompt);
+        raw = result.response.text();
+        break;
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (attempt < 2 && msg.includes("503")) {
+          await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+          continue;
+        }
+        throw e;
+      }
+    }
 
     let parsed: InsightResponse;
     try {
