@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@/lib/supabase/server";
 
 interface ColumnStats {
@@ -10,7 +10,6 @@ interface ColumnStats {
   max?: number;
   avg?: number;
   sum?: number;
-  stddev?: number;
 }
 
 interface InsightResponse {
@@ -60,31 +59,28 @@ export async function POST(req: NextRequest) {
 
     const supabase = await createClient();
 
-    if (!process.env.OPENAI_API_KEY) {
-      // Store placeholder so the page can show something with a retry button
+    if (!process.env.GEMINI_API_KEY) {
       await supabase.from("insights").insert({
         dataset_id,
-        summary: "Analysis pending — OpenAI API key not configured.",
+        summary: "Analysis pending — Gemini API key not configured.",
         key_trends: [],
         anomalies: [],
         summary_confidence: 0,
         version: 1,
       });
-      return NextResponse.json({ error: "OpenAI API key not configured" }, { status: 503 });
+      return NextResponse.json({ error: "Gemini API key not configured" }, { status: 503 });
     }
 
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-    const prompt = buildPrompt(dataset_name, row_count, column_stats, sample_rows);
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
-      temperature: 0.3,
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.0-flash",
+      generationConfig: { responseMimeType: "application/json", temperature: 0.3 },
     });
 
-    const raw = completion.choices[0].message.content ?? "{}";
+    const prompt = buildPrompt(dataset_name, row_count, column_stats, sample_rows);
+    const result = await model.generateContent(prompt);
+    const raw = result.response.text();
+
     let parsed: InsightResponse;
     try {
       parsed = JSON.parse(raw) as InsightResponse;
@@ -95,19 +91,18 @@ export async function POST(req: NextRequest) {
     const { error: insightErr } = await supabase.from("insights").insert({
       dataset_id,
       summary: parsed.summary ?? "No summary generated.",
-      summary_source: "openai/gpt-4o",
+      summary_source: "google/gemini-2.0-flash",
       summary_confidence: 0.85,
       key_trends: parsed.key_trends ?? [],
-      key_trends_source: "openai/gpt-4o",
+      key_trends_source: "google/gemini-2.0-flash",
       key_trends_confidence: 0.82,
       anomalies: parsed.anomalies ?? [],
-      anomalies_source: "openai/gpt-4o",
+      anomalies_source: "google/gemini-2.0-flash",
       anomalies_confidence: 0.78,
       version: 1,
     });
 
     if (insightErr) {
-      console.error("Insight insert error:", insightErr);
       return NextResponse.json({ error: insightErr.message }, { status: 500 });
     }
 
@@ -115,11 +110,7 @@ export async function POST(req: NextRequest) {
       action: "generate_insight",
       object_type: "insight",
       object_id: dataset_id,
-      metadata: {
-        model: "gpt-4o",
-        tokens: completion.usage?.total_tokens,
-        dataset_name,
-      },
+      metadata: { model: "gemini-2.0-flash", dataset_name },
     });
 
     return NextResponse.json({ ok: true });
