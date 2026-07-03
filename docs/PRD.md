@@ -1,38 +1,32 @@
-# Product Requirements — ads-insight-app
+# Product Requirements — Ads Insight App
 
 ## Problem
-Analyzing CSVs, spreadsheets, and reports manually is slow and error-prone. Most users who *have* data don't have time to make sense of it.
+Analyzing data (CSVs, spreadsheets, reports) takes hours of manual effort. Non-technical users — marketers, business owners, students — need fast, plain-language answers from their data without becoming analysts.
 
-## Target Users
-- Marketers reading campaign reports
-- Business owners reviewing sales data
-- Analysts who need a fast second opinion
-- Students or job seekers learning to work with data
+## Target User
+Primary: Marketers and business owners who upload performance data and need quick answers. Secondary: Students and analysts who want fast summaries without deep manual digging.
 
 ## Core Objects
-| Object | Purpose |
-|---|---|
-| `dataset` | Uploaded file + metadata (name, columns, row count) |
-| `insight` | AI summary, key trends, anomalies for a dataset |
-| `metric` | Auto-computed column-level stats (max, avg, trend) |
-| `question` | User-submitted question + AI answer about a dataset |
-| `audit_log` | Record of every meaningful action |
+- **Dataset** — uploaded file (CSV/Excel), raw data, metadata
+- **Insight** — AI-generated summary, key trends, anomalies per dataset
+- **Question** — user's follow-up natural-language query on a dataset
+- **Answer** — AI response to a Question, with confidence + source
 
-## MVP Checklist (v1)
-- [ ] Upload CSV or Excel file
-- [ ] Parse column names and row count
-- [ ] Generate plain-language summary + key trends via AI
-- [ ] Display metric highlight cards (top 5 computed stats)
-- [ ] Ask a question about the dataset; get an AI answer
-- [ ] Demo datasets pre-loaded; app is usable without uploading
-- [ ] No login required in v1
+## MVP Must-Haves
+- [ ] Upload a CSV or Excel file
+- [ ] Parse and store structured row/column data
+- [ ] Auto-generate: plain-language summary + top 3–5 key trends
+- [ ] Display insights on a clean results screen
+- [ ] Ask a follow-up question about the dataset, get an AI answer
+- [ ] Seed demo dataset visible without login
 
 ## Non-Goals (v1)
-- User accounts or authentication
-- Real-time data connections (APIs, Google Sheets)
-- Advanced ML or forecasting models
-- Team collaboration or sharing
-- Automated alerts or scheduled re-analysis
+- User accounts / login
+- Real-time API data sync
+- Advanced ML models
+- Team collaboration
+- Automated alerts
+- Multi-file cross-analysis
 
 ## Success Criteria
-**End-to-end scenario:** A marketer uploads a 12-month campaign CSV → within 30 seconds sees a plain-English summary ("Campaign C had the best ROI; Campaign A is underperforming"), three metric highlights, and two key trends — then asks "which campaign should I cut?" and gets a direct answer. Total time: under 2 minutes. Previously took 30–60 minutes of manual analysis.
+A marketer uploads a 500-row sales CSV → within 30 seconds sees a plain-English summary ("Sales peaked in March, driven by Product A. Revenue dropped 18% in June.") + 3 ranked trends + can ask "Which region performed best?" and get an accurate answer — all without opening a spreadsheet.

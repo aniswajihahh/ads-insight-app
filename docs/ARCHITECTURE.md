@@ -1,28 +1,29 @@
-# Architecture — ads-insight-app
+# Architecture — Ads Insight App
 
 ## Stack
-- **Frontend:** Next.js 14 (App Router) + Tailwind CSS
-- **Backend:** Next.js API routes (upload, parse, AI calls)
-- **Database:** Supabase (Postgres + Storage for file uploads)
-- **AI:** OpenAI GPT-4o via server-side API route (key never in browser)
-- **Deploy:** Vercel
+- **Frontend**: Next.js 14 (App Router) on Vercel
+- **Database**: Supabase (Postgres + Storage for file uploads)
+- **AI**: OpenAI GPT-4o via server-side API route (key never exposed to client)
+- **File Parsing**: `papaparse` (CSV) + `xlsx` (Excel) — server-side only
 
-## What to Build Now vs Later
-| Now (v1) | Later |
-|---|---|
-| File upload + AI summary | User accounts + data isolation |
-| Metric cards + Q&A | Chart visualizations |
-| Demo datasets, no login | PDF export, shareable links |
-| Rule-based metric detection | API source connections |
+## Build Sequence
+**Now:** File upload → parse → store → AI insight generation → display results → follow-up Q&A
+**Next:** User accounts, saved datasets, insight history
+**Later:** API data connectors, scheduled re-analysis, team sharing
 
 ## Key User Action — Step by Step
-1. **Capture:** User drops a CSV on the upload page
-2. **Parse:** API route reads file, extracts column names + row count + sample rows
-3. **Store:** `datasets` row created in Supabase; file saved to Supabase Storage
-4. **Analyze:** Server sends column schema + sample rows to OpenAI; response stored in `insights` and `metrics` tables
-5. **Show:** Dataset detail page renders summary card, metric highlights, trend list
-6. **Question:** User types a question → API sends dataset context + question to OpenAI → answer stored in `questions` → streamed to UI
-7. **Audit:** Every upload and AI call appended to `audit_logs`
+1. User drops a CSV on the upload page
+2. Next.js API route receives file, parses columns + rows server-side
+3. Parsed schema + sample rows stored in `datasets` table; file stored in Supabase Storage
+4. Server calls OpenAI with column names + data sample → returns JSON insight
+5. Insight (summary, trends, confidence) stored in `insights` table
+6. Results page fetches and renders insight in plain language
+7. User types a question → API route sends question + dataset context to OpenAI → answer stored in `answers` table and displayed
 
-## Why the Core Runs Without AI
-Column parsing, row counts, min/max/avg metrics, and data display are all computed rule-based. The app shows real structured data even if the OpenAI call fails — AI fields fall back to "Analysis pending" with a retry button.
+## Layer Plan
+1. **Data layer first**: tables, storage bucket, RLS (open for demo)
+2. **App logic**: upload handler, parser, CRUD for datasets/insights/questions/answers
+3. **Smart layer on top**: OpenAI calls for summary, trends, Q&A
+
+## Core Without AI
+If OpenAI is disabled: file uploads, parses, stores, and displays raw column stats (row count, column names, numeric min/max). The data pipeline runs independently; AI enriches it.

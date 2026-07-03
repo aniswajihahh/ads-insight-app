@@ -1,71 +1,55 @@
-# Data Model — ads-insight-app
+# Data Model — Ads Insight App
 
 ## datasets
 | Field | Type | Notes |
 |---|---|---|
 | id | uuid PK | |
-| user_id | uuid | nullable; owner after auth sprint |
-| name | text | user-provided or filename |
-| description | text | optional |
-| row_count | integer | parsed on upload |
-| column_names | jsonb | array of column name strings |
-| file_url | text | Supabase Storage URL |
-| file_type | text | 'csv' or 'excel' |
-| is_demo | boolean | true for seeded rows |
-| share_token | text | unique; enables public read link |
+| user_id | uuid nullable | owner (null = demo) |
+| name | text | filename or user label |
+| row_count | integer | parsed row total |
+| column_names | jsonb | array of column header strings |
+| sample_rows | jsonb | first 20 rows for AI context |
+| storage_path | text | Supabase Storage path |
+| status | text | 'processing' / 'ready' / 'error' |
 | created_at | timestamptz | |
 
-## insights *(AI fields — store value + source + confidence + review_status)*
+## insights
 | Field | Type | Notes |
 |---|---|---|
 | id | uuid PK | |
-| user_id | uuid | nullable |
-| dataset_id | uuid FK → datasets | cascade delete |
-| summary | text | AI value |
-| summary_source | text | e.g. 'openai/gpt-4o' |
+| dataset_id | uuid FK → datasets | |
+| user_id | uuid nullable | |
+| summary | text | AI plain-language summary |
+| summary_source | text | 'openai-gpt4o' |
 | summary_confidence | numeric | 0–1 |
 | summary_review_status | text | 'unreviewed' / 'approved' / 'flagged' |
-| key_trends | jsonb | [{trend, direction}] — AI value |
-| key_trends_source / _confidence / _review_status | text/numeric/text | |
-| anomalies | jsonb | [{column, note}] — AI value |
-| anomalies_source / _confidence / _review_status | text/numeric/text | |
-| version | integer | increments on regeneration |
-| created_at | timestamptz | |
-
-## metrics *(label is AI-assisted)*
-| Field | Type | Notes |
-|---|---|---|
-| id | uuid PK | |
-| user_id | uuid | nullable |
-| dataset_id | uuid FK → datasets | |
-| column_name | text | |
-| metric_type | text | 'max' / 'min' / 'avg' / 'sum' / 'trend' |
-| metric_value | numeric | rule-computed |
-| metric_label | text | plain-language label (AI) |
-| metric_label_source / _confidence / _review_status | text/numeric/text | |
+| trends | jsonb | array of {label, direction, magnitude} |
+| trends_source | text | |
+| trends_confidence | numeric | |
+| trends_review_status | text | |
 | created_at | timestamptz | |
 
 ## questions
 | Field | Type | Notes |
 |---|---|---|
 | id | uuid PK | |
-| user_id | uuid | nullable |
 | dataset_id | uuid FK → datasets | |
-| question_text | text | |
-| answer_text | text | AI value |
-| answer_source / _confidence / _review_status | text/numeric/text | |
+| user_id | uuid nullable | |
+| body | text | user's natural-language question |
 | created_at | timestamptz | |
 
-## audit_logs
+## answers
 | Field | Type | Notes |
 |---|---|---|
 | id | uuid PK | |
-| user_id | uuid | nullable |
-| action | text | e.g. 'upload', 'generate_insight', 'ask_question' |
-| object_type | text | 'dataset' / 'insight' / 'question' |
-| object_id | uuid | |
-| metadata | jsonb | extra context |
+| question_id | uuid FK → questions | |
+| dataset_id | uuid FK → datasets | |
+| user_id | uuid nullable | |
+| body | text | AI answer text |
+| body_source | text | 'openai-gpt4o' |
+| body_confidence | numeric | |
+| body_review_status | text | 'unreviewed' |
 | created_at | timestamptz | |
 
 ## RLS
-- All tables: v1 open policies (select + all — true). Replaced in Lock-Down sprint with `auth.uid() = user_id`.
+All tables: RLS enabled. v1 policies = fully open (select + all). Lock-down sprint replaces with `auth.uid() = user_id`.

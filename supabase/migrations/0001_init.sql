@@ -2,13 +2,11 @@ create table if not exists datasets (
   id uuid primary key default gen_random_uuid(),
   user_id uuid,
   name text not null,
-  description text,
   row_count integer,
   column_names jsonb,
-  file_url text,
-  file_type text,
-  is_demo boolean default false,
-  share_token text unique default gen_random_uuid()::text,
+  sample_rows jsonb,
+  storage_path text,
+  status text default 'ready',
   created_at timestamptz not null default now()
 );
 
@@ -23,18 +21,13 @@ create table if not exists insights (
   user_id uuid,
   dataset_id uuid references datasets(id) on delete cascade,
   summary text,
-  summary_source text default 'openai/gpt-4o',
-  summary_confidence numeric default 0.85,
+  summary_source text default 'openai-gpt4o',
+  summary_confidence numeric default 0.75,
   summary_review_status text default 'unreviewed',
-  key_trends jsonb,
-  key_trends_source text default 'openai/gpt-4o',
-  key_trends_confidence numeric default 0.82,
-  key_trends_review_status text default 'unreviewed',
-  anomalies jsonb,
-  anomalies_source text default 'openai/gpt-4o',
-  anomalies_confidence numeric default 0.78,
-  anomalies_review_status text default 'unreviewed',
-  version integer default 1,
+  trends jsonb,
+  trends_source text default 'openai-gpt4o',
+  trends_confidence numeric default 0.75,
+  trends_review_status text default 'unreviewed',
   created_at timestamptz not null default now()
 );
 
@@ -44,35 +37,11 @@ create policy "insights_v1_read" on insights for select using (true);
 drop policy if exists "insights_v1_write" on insights;
 create policy "insights_v1_write" on insights for all using (true) with check (true);
 
-create table if not exists metrics (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid,
-  dataset_id uuid references datasets(id) on delete cascade,
-  column_name text not null,
-  metric_type text not null,
-  metric_value numeric,
-  metric_label text,
-  metric_label_source text default 'rule-based',
-  metric_label_confidence numeric default 0.95,
-  metric_label_review_status text default 'unreviewed',
-  created_at timestamptz not null default now()
-);
-
-alter table metrics enable row level security;
-drop policy if exists "metrics_v1_read" on metrics;
-create policy "metrics_v1_read" on metrics for select using (true);
-drop policy if exists "metrics_v1_write" on metrics;
-create policy "metrics_v1_write" on metrics for all using (true) with check (true);
-
 create table if not exists questions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid,
   dataset_id uuid references datasets(id) on delete cascade,
-  question_text text not null,
-  answer_text text,
-  answer_source text default 'openai/gpt-4o',
-  answer_confidence numeric default 0.80,
-  answer_review_status text default 'unreviewed',
+  body text not null,
   created_at timestamptz not null default now()
 );
 
@@ -82,13 +51,36 @@ create policy "questions_v1_read" on questions for select using (true);
 drop policy if exists "questions_v1_write" on questions;
 create policy "questions_v1_write" on questions for all using (true) with check (true);
 
+create table if not exists answers (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid,
+  question_id uuid references questions(id) on delete cascade,
+  dataset_id uuid references datasets(id) on delete cascade,
+  body text,
+  body_source text default 'openai-gpt4o',
+  body_confidence numeric default 0.75,
+  body_review_status text default 'unreviewed',
+  created_at timestamptz not null default now()
+);
+
+alter table answers enable row level security;
+drop policy if exists "answers_v1_read" on answers;
+create policy "answers_v1_read" on answers for select using (true);
+drop policy if exists "answers_v1_write" on answers;
+create policy "answers_v1_write" on answers for all using (true) with check (true);
+
 create table if not exists audit_logs (
   id uuid primary key default gen_random_uuid(),
   user_id uuid,
-  action text not null,
-  object_type text not null,
-  object_id uuid,
-  metadata jsonb,
+  action_type text,
+  dataset_id uuid,
+  insight_id uuid,
+  answer_id uuid,
+  model_used text,
+  prompt_tokens integer,
+  completion_tokens integer,
+  latency_ms integer,
+  triggered_by text,
   created_at timestamptz not null default now()
 );
 
@@ -98,36 +90,51 @@ create policy "audit_logs_v1_read" on audit_logs for select using (true);
 drop policy if exists "audit_logs_v1_write" on audit_logs;
 create policy "audit_logs_v1_write" on audit_logs for all using (true) with check (true);
 
-insert into datasets (id, name, description, row_count, column_names, file_type, is_demo) values
-  ('a1000000-0000-0000-0000-000000000001', 'E-Commerce Monthly Sales', 'Monthly revenue, orders, and return rate for an online store (Jan–Dec 2023)', 12, '["month","revenue","orders","avg_order_value","return_rate"]', 'csv', true),
-  ('a1000000-0000-0000-0000-000000000002', 'Marketing Campaign Performance', 'CTR, impressions, conversions and cost per click across 5 ad campaigns', 5, '["campaign","impressions","clicks","ctr","conversions","cpc","spend"]', 'csv', true),
-  ('a1000000-0000-0000-0000-000000000003', 'Student Exam Results', 'Scores across 6 subjects for 30 students in a semester', 30, '["student_id","math","english","science","history","art","avg_score"]', 'csv', true);
+insert into datasets (id, name, row_count, column_names, sample_rows, status) values
+(
+  'a1b2c3d4-0001-0001-0001-000000000001',
+  'Q1 2024 Sales by Region',
+  480,
+  '["Date","Region","Product","Revenue","Units"]',
+  '[{"Date":"2024-01-03","Region":"North","Product":"Alpha","Revenue":1200,"Units":40},{"Date":"2024-01-04","Region":"South","Product":"Beta","Revenue":800,"Units":25},{"Date":"2024-01-05","Region":"East","Product":"Alpha","Revenue":2100,"Units":70}]',
+  'ready'
+),
+(
+  'a1b2c3d4-0002-0002-0002-000000000002',
+  'Website Traffic — March 2024',
+  310,
+  '["Date","Source","Sessions","Bounce_Rate","Conversions"]',
+  '[{"Date":"2024-03-01","Source":"Organic","Sessions":1200,"Bounce_Rate":0.42,"Conversions":38},{"Date":"2024-03-02","Source":"Paid","Sessions":880,"Bounce_Rate":0.55,"Conversions":21},{"Date":"2024-03-03","Source":"Social","Sessions":430,"Bounce_Rate":0.61,"Conversions":9}]',
+  'ready'
+),
+(
+  'a1b2c3d4-0003-0003-0003-000000000003',
+  'Student Exam Results — Spring Cohort',
+  95,
+  '["Student_ID","Subject","Score","Grade","Attendance_Pct"]',
+  '[{"Student_ID":"S001","Subject":"Math","Score":82,"Grade":"B","Attendance_Pct":0.91},{"Student_ID":"S002","Subject":"Math","Score":67,"Grade":"D","Attendance_Pct":0.74},{"Student_ID":"S003","Subject":"Math","Score":95,"Grade":"A","Attendance_Pct":0.98}]',
+  'ready'
+);
 
-insert into insights (dataset_id, summary, key_trends, anomalies, version) values
-  ('a1000000-0000-0000-0000-000000000001',
-   'Revenue grew steadily through Q3, peaking in October at $84k, then dipped sharply in November. Average order value increased 18% year-over-year while return rates stayed below 5% for 10 of 12 months.',
-   '[{"trend":"Revenue peak in October ($84k)","direction":"up"},{"trend":"Return rate spike in November (8.2%)","direction":"down"},{"trend":"Avg order value up 18% vs prior year","direction":"up"}]',
-   '[{"column":"return_rate","month":"November","value":0.082,"note":"Highest return rate of the year — possible post-promotion effect"}]',
-   1),
-  ('a1000000-0000-0000-0000-000000000002',
-   'Campaign C delivered the highest conversion rate (4.8%) at the lowest cost per click ($0.32). Campaign A had the most impressions but the weakest CTR (0.9%), suggesting a targeting or creative issue.',
-   '[{"trend":"Campaign C best ROI","direction":"up"},{"trend":"Campaign A high spend, low CTR","direction":"down"},{"trend":"Overall avg CPC dropped 12% vs benchmark","direction":"up"}]',
-   '[{"column":"ctr","campaign":"Campaign A","value":0.009,"note":"CTR below 1% on highest-spend campaign — review audience targeting"}]',
-   1),
-  ('a1000000-0000-0000-0000-000000000003',
-   'Class average across all subjects is 71.4%. Math scores show the widest spread (42–98), indicating mixed ability levels. Art has the highest average (81.2%) and the tightest score distribution.',
-   '[{"trend":"Art highest class average (81.2)","direction":"up"},{"trend":"Math widest score range (56 pts)","direction":"neutral"},{"trend":"3 students below 50 avg — at risk","direction":"down"}]',
-   '[{"column":"math","note":"6 students scored below 50 in Math — outlier cluster worth addressing"}]',
-   1);
-
-insert into metrics (dataset_id, column_name, metric_type, metric_value, metric_label) values
-  ('a1000000-0000-0000-0000-000000000001', 'revenue', 'max', 84000, 'Peak revenue: $84,000 (October)'),
-  ('a1000000-0000-0000-0000-000000000001', 'revenue', 'avg', 61250, 'Monthly avg revenue: $61,250'),
-  ('a1000000-0000-0000-0000-000000000002', 'ctr', 'max', 0.048, 'Best CTR: 4.8% (Campaign C)'),
-  ('a1000000-0000-0000-0000-000000000002', 'spend', 'sum', 18400, 'Total ad spend: $18,400'),
-  ('a1000000-0000-0000-0000-000000000003', 'avg_score', 'avg', 71.4, 'Class average score: 71.4'),
-  ('a1000000-0000-0000-0000-000000000003', 'avg_score', 'min', 44.2, 'Lowest student average: 44.2');
-
-insert into questions (dataset_id, question_text, answer_text) values
-  ('a1000000-0000-0000-0000-000000000001', 'Why did revenue drop in November?', 'November saw a 22% revenue dip from October''s peak. The simultaneous spike in return rate (8.2%) suggests a post-promotion effect — customers returning items bought during an October sale. This is common after discount campaigns and likely not a structural decline.'),
-  ('a1000000-0000-0000-0000-000000000002', 'Which campaign should I cut?', 'Campaign A is the strongest cut candidate: it consumed the largest share of budget but delivered a 0.9% CTR — the lowest in the set. Reallocating its budget to Campaign C (4.8% CTR, $0.32 CPC) could improve overall ROI significantly.');
+insert into insights (dataset_id, summary, summary_source, summary_confidence, summary_review_status, trends, trends_source, trends_confidence, trends_review_status) values
+(
+  'a1b2c3d4-0001-0001-0001-000000000001',
+  'Sales peaked in January and March, driven primarily by Product Alpha in the North region. Overall revenue averaged $1,850 per transaction, with the East region outperforming others by 32%. June saw an 18% dip likely tied to seasonal demand slowdown.',
+  'openai-gpt4o', 0.82, 'unreviewed',
+  '[{"label":"East region leads revenue","direction":"up","magnitude":"high"},{"label":"Product Alpha dominates unit sales","direction":"up","magnitude":"high"},{"label":"June revenue decline","direction":"down","magnitude":"medium"}]',
+  'openai-gpt4o', 0.80, 'unreviewed'
+),
+(
+  'a1b2c3d4-0002-0002-0002-000000000002',
+  'Organic search is the top traffic driver with the lowest bounce rate (42%), suggesting high intent visitors. Paid traffic delivers volume but converts at half the organic rate. Social channels show the weakest conversion performance despite growing sessions in week 3.',
+  'openai-gpt4o', 0.78, 'unreviewed',
+  '[{"label":"Organic sessions highest quality","direction":"up","magnitude":"high"},{"label":"Paid bounce rate elevated","direction":"up","magnitude":"medium"},{"label":"Social conversions underperforming","direction":"down","magnitude":"medium"}]',
+  'openai-gpt4o', 0.77, 'unreviewed'
+),
+(
+  'a1b2c3d4-0003-0003-0003-000000000003',
+  'The cohort average score is 74, with high attendance (above 90%) strongly correlating with scores above 80. Students with attendance below 80% averaged a D grade. Math is the most common subject in the dataset and shows the widest score spread.',
+  'openai-gpt4o', 0.81, 'unreviewed',
+  '[{"label":"Attendance predicts score","direction":"up","magnitude":"high"},{"label":"Wide score spread in Math","direction":"up","magnitude":"medium"},{"label":"Low-attendance students at risk","direction":"down","magnitude":"high"}]',
+  'openai-gpt4o', 0.79, 'unreviewed'
+);

@@ -1,43 +1,30 @@
-# Agentic Layer — ads-insight-app
+# Agentic Layer — Ads Insight App
 
 ## Risk Levels & Actions
 
 ### Low — Auto-execute (no approval needed)
-| Action | Trigger | Tool |
-|---|---|---|
-| Generate insight summary | Dataset uploaded | `generate_insight(dataset_id)` |
-| Compute metric highlights | Columns parsed | `compute_metrics(dataset_id)` |
-| Answer user question | Question submitted | `answer_question(question_id)` |
-| Tag anomalies | Insight generated | `tag_anomalies(insight_id)` |
+- `generate_insight(dataset_id)` — summarize dataset, extract trends, store in `insights`
+- `answer_question(question_id)` — answer user query using dataset context, store in `answers`
+- `tag_columns(dataset_id)` — classify column types (date, numeric, categorical)
 
-### Medium — Confirm before running *(v1: not yet built)*
-| Action | Why Approval |
-|---|---|
-| Regenerate insight (overwrites v1) | Destroys prior version |
-| Delete dataset | Removes all child records |
+### Medium — Light approval (user confirms)
+- `re_analyze_dataset(dataset_id)` — re-run insight generation on updated or re-uploaded data
+- `flag_insight(insight_id, reason)` — mark insight for human review
 
-### High — Always approval *(later)*
-| Action | Why |
-|---|---|
-| Share insight publicly | Exposes user data |
-| Export + email report | External communication |
+### High — Always requires explicit approval
+- `delete_dataset(dataset_id)` — removes file from storage + all related records
 
-### Critical — Human only *(later)*
-| Action | Why |
-|---|---|
-| Bulk delete all datasets | Irreversible data loss |
-| Admin review of flagged AI output | Trust & safety |
+### Critical — Human-only
+- Bulk data deletion, any export to external systems
 
-## Named Tools (approved list)
-- `generate_insight` — calls OpenAI, writes to `insights`
-- `compute_metrics` — rule-based, writes to `metrics`
-- `answer_question` — calls OpenAI with dataset context, writes to `questions`
-- `tag_anomalies` — rule-based, updates `insights.anomalies`
-- `log_action` — writes to `audit_logs`
+## Named Tools (v1)
+- `openai_chat_completion` — only tool for AI calls; prompt + model hardcoded server-side
+- `supabase_storage_upload` — file ingest only
+- `supabase_db_write` — scoped inserts/updates to app tables only
 
-## Audit Log Fields
-`action`, `object_type`, `object_id`, `user_id`, `metadata` (prompt hash, model, token count), `created_at`
+## Audit Log Fields (on every AI action)
+`action_type`, `dataset_id`, `insight_id / answer_id`, `model_used`, `prompt_tokens`, `completion_tokens`, `latency_ms`, `triggered_by`, `created_at`
 
 ## v1 vs Later
-- v1: low-risk auto actions only
-- Later: approval flow UI for medium-risk; human review queue for flagged insights
+- **v1**: auto-generate insight on upload; auto-answer questions
+- **Later**: scheduled re-analysis, proactive anomaly alerts (high approval), Slack/email delivery (high approval)

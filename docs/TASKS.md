@@ -1,74 +1,74 @@
-# Tasks — ads-insight-app
+# Tasks & Sprints — Ads Insight App
 
-## Gantt Overview
+## Sprint 1 — Database + File Upload Engine (Days 1–2)
+**Goal:** Schema live, file upload works, parsed data stored. Core engine running.
+- [ ] Run migration SQL (datasets, insights, questions, answers, audit_logs tables + RLS)
+- [ ] Seed 2 demo datasets with pre-generated insights (visible without login)
+- [ ] Create Supabase Storage bucket `datasets`
+- [ ] Build `/api/upload` route: receive file, parse CSV/Excel server-side, store structured data
+- [ ] Display upload page with drag-and-drop (no login required)
+- [ ] Show demo dataset on homepage without auth
+
+**Definition of Done:** Upload a real CSV → row appears in `datasets` table → columns + sample rows stored correctly.
+
+---
+
+## Sprint 2 — AI Insight Generation (Days 2–3) ✅ v1 functional milestone
+**Goal:** Upload → instant plain-English insight. Core workflow end-to-end.
+- [ ] Build `/api/generate-insight` route: call OpenAI with structured sample, store result in `insights`
+- [ ] Trigger insight generation automatically after successful upload
+- [ ] Results page `/dataset/[id]`: show summary + ranked trends
+- [ ] Handle loading state (processing spinner) + error state (failed generation message)
+- [ ] Write audit log entry per generation
+- [ ] Test with 3 real CSV files (sales, traffic, student grades)
+
+**Definition of Done:** Upload CSV → results page shows plain-English summary + ≥3 trends within 30 seconds.
+
+---
+
+## Sprint 3 — Follow-up Q&A (Days 3–4)
+**Goal:** Users can ask questions about their dataset and get answers.
+- [ ] Q&A input form on results page
+- [ ] Build `/api/ask` route: receive question + dataset_id, call OpenAI with context, store in `questions` + `answers`
+- [ ] Display answer below question; show answer history for dataset
+- [ ] Handle empty question / no answer gracefully
+- [ ] Write audit log per answer
+
+**Definition of Done:** Type "Which region performed best?" → answer appears within 15 seconds, stored in DB, visible on refresh.
+
+---
+
+## Sprint 4 — Polish + Demo Case Study (Days 4–5)
+**Goal:** App is shareable, looks real, has a demo story.
+- [ ] Datasets list page `/datasets` — shows all uploaded + demo datasets
+- [ ] Delete dataset button (with confirmation modal — high-risk action)
+- [ ] Empty state screens (no datasets yet, no questions yet)
+- [ ] Error boundary for failed uploads/parsing
+- [ ] Write one-page case study (marketing data example: before/after time comparison)
+- [ ] Deploy to Vercel, test end-to-end in production
+
+**Definition of Done:** Shareable link works, demo datasets render, upload-to-insight flow works in prod.
+
+---
+
+## Sprint 5 — Lock It Down (Week 2)
+**Goal:** Add auth, isolate user data, make it safe for real data.
+- [ ] Add Supabase Auth (email/password + magic link)
+- [ ] Login / signup pages; redirect after auth
+- [ ] Replace open RLS policies with `auth.uid() = user_id` on all tables
+- [ ] Associate uploads with logged-in `user_id`
+- [ ] Protect `/api/*` routes: reject unauthenticated requests
+- [ ] Keep demo datasets readable by all (set `user_id = null` with separate public policy)
+
+**Definition of Done:** Logged-out user sees only demo data; logged-in user sees only their own uploads + demo data.
+
+---
+
+## Gantt (Text)
 ```
-Week 1: Sprint 1 (DB + Upload Engine)
-Week 1: Sprint 2 (Q&A + Metrics)        ← v1 functional ✅
-Week 2: Sprint 3 (Polish + Export)
-Week 2: Sprint 4 (Lock It Down)
+Day 1-2  | Sprint 1 — DB + Upload Engine
+Day 2-3  | Sprint 2 — AI Insight Generation  ← v1 functional
+Day 3-4  | Sprint 3 — Follow-up Q&A
+Day 4-5  | Sprint 4 — Polish + Case Study + Deploy
+Week 2   | Sprint 5 — Lock It Down (Auth + RLS)
 ```
-
----
-
-## Sprint 1 — DB + Upload Engine
-**Goal:** Database live, file upload works, AI insight generated and displayed. App viewable without login.
-
-- [ ] Run migration SQL in Supabase (datasets, insights, metrics, questions, audit_logs)
-- [ ] Verify seeded demo rows render on homepage (dataset cards with summaries)
-- [ ] Build `/upload` page: drag-and-drop CSV/Excel input (react-dropzone)
-- [ ] POST `/api/upload`: parse file (papaparse / xlsx), extract columns + row count, save to `datasets`
-- [ ] POST `/api/generate-insight`: send column schema + sample rows to OpenAI, store result in `insights`
-- [ ] Auto-trigger insight generation after successful upload
-- [ ] Render insight summary card and key trends list on `/dataset/[id]`
-- [ ] Loading spinner during AI call; error state with retry if OpenAI fails
-- [ ] Log every upload + insight-generate event to `audit_logs`
-
-**Definition of Done:** Upload a real CSV → insight card appears with summary and trends. Demo datasets visible on homepage with no login.
-
----
-
-## Sprint 2 — Q&A + Metric Highlights ✅ v1 functional
-**Goal:** Users can ask questions and see metric cards. Full success scenario is usable end-to-end.
-
-- [ ] POST `/api/ask`: receive question + dataset_id, build prompt with dataset context, call OpenAI, store in `questions`, stream answer to UI
-- [ ] Question input + answer display on `/dataset/[id]` — shows Q&A history for session
-- [ ] Compute top-5 metrics per dataset (max, min, avg for numeric columns) — store in `metrics`
-- [ ] Metric highlight cards rendered on dataset page (e.g. "Peak revenue: $84k — October")
-- [ ] Dataset list page `/datasets` showing all uploaded + demo datasets with name, row count, summary preview
-- [ ] Create (already done via upload), edit name/description, delete dataset — all wired to DB
-- [ ] Empty state for datasets page ("Upload your first dataset")
-- [ ] Error state if question submitted with no dataset context
-- [ ] Manual test: upload CSV → see summary → see metrics → ask question → get answer
-
-**Definition of Done:** End-to-end success scenario works. No dead buttons. Data persists on reload.
-
----
-
-## Sprint 3 — Polish + Shareable Output
-**Goal:** Insight output is exportable and shareable; charts added for numeric columns.
-
-- [ ] PDF export of insight page (Puppeteer route or react-pdf)
-- [ ] Public share link using `share_token` — read-only `/share/[token]` page, no auth needed
-- [ ] Auto-generate bar or line chart for numeric columns (Recharts)
-- [ ] "Regenerate insight" button — calls AI again, increments `version`, keeps old row
-- [ ] Copy-to-clipboard button on summary card and individual trend items
-- [ ] Improve AI prompt: include detected anomalies and metric outliers for richer output
-- [ ] Show `review_status` badge on insights with confidence < 0.7 ("Low confidence — review")
-
-**Definition of Done:** Share link opens insight read-only in incognito. PDF downloads with summary + metrics. Chart renders for numeric columns.
-
----
-
-## Sprint 4 — Lock It Down
-**Goal:** Auth added, user data isolated, open RLS replaced with owner policies.
-
-- [ ] Enable Supabase Auth (email + magic link)
-- [ ] Add `/login` and `/signup` pages
-- [ ] Set `user_id` on all rows created post-login
-- [ ] Replace v1 open RLS policies with `auth.uid() = user_id` on all tables
-- [ ] Demo datasets remain public (is_demo = true bypass policy)
-- [ ] Redirect unauthenticated upload attempts to login with return URL
-- [ ] Rate-limit `/api/upload` and `/api/generate-insight` (10 req/min per IP)
-- [ ] Verify no API key or service_role key appears in browser network tab
-
-**Definition of Done:** Logged-out user can view demo datasets but cannot upload or ask questions. Logged-in user only sees their own uploaded datasets. All secrets absent from browser.

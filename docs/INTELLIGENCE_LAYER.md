@@ -1,48 +1,39 @@
-# Intelligence Layer — ads-insight-app
+# Intelligence Layer — Ads Insight App
 
 ## Messy Inputs
-- Raw CSV/Excel with unnamed columns, mixed types, missing values
-- No context about what the data means
-- Columns like `col_A`, `revenue_usd`, `month`, `CTR%`
+- Raw CSV/Excel with mixed column names, blank rows, inconsistent formats
+- Numeric, categorical, date fields mixed without labels
+- No context about what the data represents
 
-## Auto-Structure Schema (sent to AI)
+## Auto-Structure Schema (JSON sent to AI)
 ```json
 {
-  "dataset_name": "Q4 Sales Report",
-  "row_count": 90,
-  "columns": [
-    {"name": "month", "type": "string", "sample": ["Oct", "Nov", "Dec"]},
-    {"name": "revenue", "type": "numeric", "min": 41000, "max": 84000, "avg": 61250}
-  ],
+  "dataset_name": "sales_q1.csv",
+  "row_count": 480,
+  "columns": ["Date", "Region", "Product", "Revenue", "Units"],
   "sample_rows": [
-    {"month": "Oct", "revenue": 84000},
-    {"month": "Nov", "revenue": 65000}
-  ]
+    {"Date": "2024-01-03", "Region": "North", "Product": "A", "Revenue": 1200, "Units": 40}
+  ],
+  "numeric_stats": {"Revenue": {"min": 200, "max": 8400, "mean": 1850}}
 }
 ```
 
-## Events Tracked
+## Events to Track
 - Dataset uploaded
-- Insight generated (version N)
-- Question asked + answered
-- Insight regenerated
-- Insight card copied or exported
+- Insight generated (latency, token count)
+- Question asked
+- Answer received
+- User returns to a dataset
 
-## Scoring Rules (v1 — rule-based first)
-| Signal | Score |
-|---|---|
-| Numeric column detected | +1 metric generated |
-| Value > 2 std devs from mean | flagged as anomaly |
-| Monotonic increase/decrease ≥ 3 periods | trend direction = up/down |
-| AI confidence < 0.6 | review_status = 'flagged' |
+## Scoring Rules (v1 — rule-based)
+- **Trend magnitude**: % change > 20% = high, 10–20% = medium, < 10% = low
+- **Confidence**: assigned by OpenAI token probability proxy; default 0.75 if unavailable
+- **Insight freshness**: score decays if dataset > 7 days old without re-analysis
 
 ## What Gets Ranked
-- Metric highlights sorted by: anomaly flag > large % change > high absolute value
-- Trends ordered by magnitude of change
+- Trends sorted by magnitude (highest first)
+- Questions shown newest-first
 
 ## v1 vs Later
-| v1 | Later |
-|---|---|
-| GPT-4o summary + trends | Fine-tuned domain-specific model |
-| Rule-based metric detection | Statistical anomaly detection (z-score, IQR) |
-| Single-pass insight | Multi-turn conversation with memory |
+- **v1**: GPT-4o summary + top trends + Q&A — all rule-prompted
+- **Later**: fine-tuned domain prompts, anomaly detection, chart recommendations

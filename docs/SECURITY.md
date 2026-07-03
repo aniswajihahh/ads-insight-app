@@ -1,26 +1,21 @@
-# Security — ads-insight-app
+# Security — Ads Insight App
 
 ## Secret Handling
-- `OPENAI_API_KEY` stored in Vercel environment variables — never referenced in any client-side file
-- Supabase `service_role` key used only in server-side API routes; `anon` key only in browser client
-- File uploads go server → Supabase Storage; signed URLs issued per-request, not stored permanently
+- `OPENAI_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY` live in Vercel environment variables only
+- Never referenced in client-side code or exposed in API responses
+- All AI calls made from Next.js API routes (`/api/*`) — client sends dataset ID, not raw data
 
-## Permission Model (v1 — open demo)
-- All tables have permissive RLS (read + write open to anonymous users)
-- No sensitive user data stored in v1 (no PII, no payment info)
-- Replaced in Lock-Down sprint with `auth.uid() = user_id` row-level policies
+## Permission Model (v1 — demo open)
+- Supabase RLS enabled on all tables with permissive v1 policies (open read + write)
+- No user sessions yet; `user_id` is nullable — demo rows have `user_id = null`
+- Lock-down sprint: replace open policies with `auth.uid() = user_id`; add Supabase Auth
 
 ## Approved Tools Rule
-- Agent may only call the four named tools: `generate_insight`, `compute_metrics`, `answer_question`, `tag_anomalies`
-- No `run_any`, `exec`, or raw SQL from AI layer
-- Every tool call writes a row to `audit_logs` before returning
+- Agent may only call named, scoped tools: `openai_chat_completion`, `supabase_db_write`, `supabase_storage_upload`
+- No `eval`, `exec`, `run_any`, or dynamic tool construction permitted
+- File parsing runs server-side only; raw file bytes never forwarded to AI — only structured sample rows
 
 ## Audit Principle
-- Every meaningful state change (upload, generate, ask, delete) is logged with `action`, `object_id`, `user_id`, `metadata`, and `created_at`
-- Logs are append-only; no log row is ever deleted or updated
-
-## Lock-Down Sprint (before real user data)
-- Enable Supabase Auth
-- Replace v1 RLS policies with owner-scoped policies
-- Migrate demo rows under a system user_id
-- Add CSRF protection and rate limiting on upload + AI routes
+- Every AI generation (insight, answer) writes a record to `audit_logs` before returning to the client
+- Failed generations log error + partial context for debugging
+- No meaningful action is silent

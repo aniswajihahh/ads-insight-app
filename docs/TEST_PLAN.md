@@ -1,34 +1,29 @@
-# Test Plan — ads-insight-app
+# Test Plan — Ads Insight App
 
-## 1. Core Success Scenario (manual)
-| Step | Action | Expected Result |
-|---|---|---|
-| 1 | Open homepage | 3 demo dataset cards visible; no login prompt |
-| 2 | Click demo "E-Commerce Monthly Sales" | Dataset detail page opens; summary card, 3 trends, 2 metric highlights visible |
-| 3 | Go to `/upload` | Drag-and-drop area visible |
-| 4 | Upload a real CSV (≥ 5 columns, 20+ rows) | File accepted; "Analyzing..." spinner shown |
-| 5 | Wait for insight | Summary card appears with plain-English text within 30s |
-| 6 | Check metric highlights | At least 3 metric cards rendered with column name + value |
-| 7 | Type question: "What is the biggest trend?" | Answer appears within 10s |
-| 8 | Refresh page | Dataset, insight, and Q&A history still visible |
-| 9 | Delete dataset | Dataset removed; returns to list; row gone from DB |
+## Core Success Scenario (Manual)
+1. Open homepage — demo dataset insight visible without login ✓
+2. Click "Upload your data" — drag-drop a 200-row sales CSV
+3. See processing spinner → results page loads within 30s
+4. Verify: plain-English summary displayed (not empty, not raw JSON)
+5. Verify: at least 3 trends listed with labels and direction (up/down)
+6. Type question: "Which product had the highest revenue?" → submit
+7. Verify: answer appears within 15s, references correct column/value
+8. Refresh page → answer and insight still visible (persisted to DB)
+9. Navigate to `/datasets` → new dataset appears in list
+10. Check Supabase dashboard: rows in `datasets`, `insights`, `questions`, `answers`, `audit_logs`
 
-## 2. Empty States
-| Scenario | Expected |
-|---|---|
-| No datasets uploaded yet | "Upload your first dataset" prompt with upload CTA |
-| Dataset has no numeric columns | Metrics section shows "No numeric columns detected" |
-| No questions asked yet | "Ask a question about this data" placeholder |
+## Empty / Edge Cases
+- Upload a file with no numeric columns → show friendly message: "No numeric data found to analyze"
+- Upload an empty CSV (headers only) → error state: "Dataset has no rows"
+- Submit a blank question → form validation: "Please enter a question"
+- OpenAI API timeout → show: "Insight generation failed — please try again"
+- Upload a non-CSV/Excel file → reject with: "Only CSV and Excel files are supported"
 
-## 3. Error States
-| Scenario | Expected |
-|---|---|
-| Upload non-CSV/Excel file | "Only CSV and Excel files are supported" error toast |
-| OpenAI call fails (simulate by revoking key) | "Analysis failed — retry" button; metric cards still shown (rule-based) |
-| Upload empty file (0 rows) | "File appears to be empty — please check and re-upload" |
-| Ask question with blank input | Submit button disabled; no API call fired |
+## Error Cases
+- Supabase storage upload fails → surface error on upload page, do not create `dataset` row
+- OpenAI returns empty response → mark insight status 'error', log to audit_logs, show retry button
+- Dataset ID not found (direct URL) → 404 page with link back to homepage
 
-## 4. Data Integrity
-- Upload same file twice → two separate `datasets` rows created (no dedup in v1)
-- Regenerate insight → new `insights` row with version = 2; original row preserved
-- Delete dataset → cascade deletes `insights`, `metrics`, `questions` rows for that dataset
+## Performance Check
+- 500-row CSV: upload + parse + insight < 30 seconds end-to-end
+- Q&A response < 15 seconds
