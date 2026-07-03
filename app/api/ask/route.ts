@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(req: NextRequest) {
   try {
@@ -69,7 +70,8 @@ Answer directly and specifically. Use numbers from the dataset where relevant. K
       }
     }
 
-    const { data: question, error: qErr } = await supabase
+    const admin = createAdminClient();
+    const { data: question, error: qErr } = await admin
       .from("questions")
       .insert({
         dataset_id,
@@ -86,7 +88,7 @@ Answer directly and specifically. Use numbers from the dataset where relevant. K
       return NextResponse.json({ error: qErr.message }, { status: 500 });
     }
 
-    await supabase.from("audit_logs").insert({
+    await admin.from("audit_logs").insert({
       action: "ask_question",
       object_type: "question",
       object_id: question.id,

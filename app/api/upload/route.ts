@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 interface ColumnStats {
   name: string;
@@ -117,7 +118,8 @@ export async function POST(req: NextRequest) {
     const sampleRows = allRows.slice(0, 10);
     const stats = computeColumnStats(allRows, columns);
 
-    const supabase = supabaseAuth;
+    // Use admin client for all DB writes — auth is verified above via getUser()
+    const supabase = createAdminClient();
 
     const { data: dataset, error: dsErr } = await supabase
       .from("datasets")
@@ -137,7 +139,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Compute and store rule-based metrics
-    const metricRows = buildMetrics(dataset.id, stats);
+    const metricRows = buildMetrics(dataset.id, stats).map((r) => ({ ...r, user_id: user.id }));
     if (metricRows.length > 0) {
       await supabase.from("metrics").insert(metricRows);
     }
