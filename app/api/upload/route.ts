@@ -43,6 +43,10 @@ function computeColumnStats(rows: Record<string, unknown>[], columns: string[]):
   });
 }
 
+function isRateColumn(name: string): boolean {
+  return /ctr|cpm|cpc|cpl|cost per|per click|per lead|per 1,?000|frequency|\brate\b|%|lead gen/i.test(name);
+}
+
 function buildMetrics(
   datasetId: string,
   stats: ColumnStats[]
@@ -56,14 +60,19 @@ function buildMetrics(
         ? v.toLocaleString("en-US", { maximumFractionDigits: 0 })
         : v.toLocaleString("en-US", { maximumFractionDigits: 2 });
 
-    if (stat.max !== undefined)
-      metrics.push({ dataset_id: datasetId, column_name: stat.name, metric_type: "max", metric_value: stat.max, metric_label: `Peak ${stat.name}: ${fmt(stat.max)}` });
-    if (stat.min !== undefined)
-      metrics.push({ dataset_id: datasetId, column_name: stat.name, metric_type: "min", metric_value: stat.min, metric_label: `Min ${stat.name}: ${fmt(stat.min)}` });
-    if (stat.avg !== undefined)
-      metrics.push({ dataset_id: datasetId, column_name: stat.name, metric_type: "avg", metric_value: stat.avg, metric_label: `Avg ${stat.name}: ${fmt(stat.avg)}` });
-    if (stat.sum !== undefined)
-      metrics.push({ dataset_id: datasetId, column_name: stat.name, metric_type: "sum", metric_value: stat.sum, metric_label: `Total ${stat.name}: ${fmt(stat.sum)}` });
+    if (isRateColumn(stat.name)) {
+      // Rate/efficiency columns: avg and max only — summing them is meaningless
+      if (stat.avg !== undefined)
+        metrics.push({ dataset_id: datasetId, column_name: stat.name, metric_type: "avg", metric_value: stat.avg, metric_label: `Avg ${stat.name}: ${fmt(stat.avg)}` });
+      if (stat.max !== undefined)
+        metrics.push({ dataset_id: datasetId, column_name: stat.name, metric_type: "max", metric_value: stat.max, metric_label: `Peak ${stat.name}: ${fmt(stat.max)}` });
+    } else {
+      // Volume columns: sum (total) and max (best single row)
+      if (stat.sum !== undefined)
+        metrics.push({ dataset_id: datasetId, column_name: stat.name, metric_type: "sum", metric_value: stat.sum, metric_label: `Total ${stat.name}: ${fmt(stat.sum)}` });
+      if (stat.max !== undefined)
+        metrics.push({ dataset_id: datasetId, column_name: stat.name, metric_type: "max", metric_value: stat.max, metric_label: `Peak ${stat.name}: ${fmt(stat.max)}` });
+    }
   }
 
   return metrics;

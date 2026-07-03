@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import QASection from "./QASection";
 import DeleteButton from "./DeleteButton";
 import EditDataset from "./EditDataset";
@@ -45,6 +45,12 @@ export default async function DatasetPage({ params }: { params: Promise<{ id: st
     .single();
 
   if (error || !dataset) notFound();
+
+  // Non-demo datasets require login
+  if (!dataset.is_demo) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) redirect(`/login?next=/dataset/${id}`);
+  }
 
   const [{ data: insights }, { data: metrics }, { data: questions }] = await Promise.all([
     supabase.from("insights").select("*").eq("dataset_id", id).order("version", { ascending: false }).limit(1),
@@ -174,7 +180,7 @@ export default async function DatasetPage({ params }: { params: Promise<{ id: st
         )}
 
         {/* Metric highlights */}
-        <MetricsPanel metrics={metricList} datasetId={id} />
+        <MetricsPanel metrics={metricList} datasetId={id} allColumns={columns} />
 
         {/* Q&A */}
         <QASection datasetId={id} initialQuestions={questionList} />
